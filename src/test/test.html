@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="../../node_modules/mocha/mocha.css" rel="stylesheet" />
+    <script src="../../node_modules/mocha/mocha.js"></script>
+    <script src="../../node_modules/chai/chai.js"></script>
+    <title>mokc Test Page</title>
+</head>
+<body>
+<div id="mocha"></div>
+
+<script>
+"use strict";
+mocha.setup('bdd');
+</script>
+
+<script src="entry.js"></script>
+
+<script>
+"use strict";
+mocha.checkLeaks();
+mocha.run();
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "name": "mokc",
+  "version": "0.0.1",
+  "description": "mokc.js is a JavaScript value (that without contexts) mocking library for unit testing and others.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xinkai/mokc.git"
+  },
+  "keywords": [
+    "mocking"
+  ],
+  "author": "Xinkai Chen <xinkai.chen@qq.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Xinkai/mokc/issues"
+  },
+  "homepage": "https://github.com/Xinkai/mokc#readme",
+  "devDependencies": {
+    "babel-plugin-transform-es2015-block-scoping": "^6.7.1",
+    "gulp": "^3.9.1",
+    "gulp-babel": "^6.1.2",
+    "gulp-header": "^1.7.1",
+    "gulp-sourcemaps": "^1.6.0",
+    "karma": "^0.13.22",
+    "karma-chrome-launcher": "^0.2.2",
+    "karma-coverage": "^0.5.5",
+    "karma-firefox-launcher": "^0.1.7",
+    "karma-mocha": "^0.2.2",
+    "rollup-stream": "^1.4.1",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-source-stream": "^1.1.0"
+  }
+}
