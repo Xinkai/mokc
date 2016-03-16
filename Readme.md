@@ -6,6 +6,9 @@ mokc.js is a JavaScript mocking library for unit testing and others.
 
 Currently tested on:
 
+  * Chromium 51 - best
+  * Firefox Nightly - okay-ish
+  * Edge 13    - okay-ish
   * Chrome 49  - okay-ish
   * Firefox 45 - okay-ish
   * Node 5.7   - problematic

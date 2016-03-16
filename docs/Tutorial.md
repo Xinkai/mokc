@@ -96,7 +96,7 @@ This tutorial is not complete. See the test code for more usage.
   mock.method[has].called.with("a", "b")(); // evaluates to false
   ```
 
-  `.with()` is a filter. There are more filters, like `.return()`
+  `.with()` is a filter. There are more filters, like `.returns()`
 
   ```
   mock.method(1, 2, 3);
