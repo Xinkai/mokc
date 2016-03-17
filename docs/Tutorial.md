@@ -7,9 +7,9 @@ This tutorial is not complete. See the test code for more usage.
 
      Prepend `"use strict";` to be the first line of every one of your JS files.
 
-  2. Get an ES6 module loader/bundler
+  2. Get an ES2015 module loader/bundler
 
-     mokc.js is written in ES6
+     mokc.js is written in ES2015
 
 
 2. Making mocks
@@ -123,19 +123,3 @@ This tutorial is not complete. See the test code for more usage.
   mock.method("Hello");
   mock.method[has].called.with(Whats)(); // evaluates to be [ "Hello", "Goodbye" ], because only two unique calls were made
   ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

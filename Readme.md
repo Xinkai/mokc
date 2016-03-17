@@ -20,7 +20,7 @@ Note: You should `use strict` when you use this library to avoid problems.
 
 ## Goals
 
-  * Find the limitation of ES6 Proxies/Reflects
+  * Find the limitation of ES2015 Proxies/Reflects
   * Create an easy-to-use, and flexible mocking experience
   * Keep up with the language
   * Minimum impact (Mock objects should have most Symbols invisible; modify as fewer global objects as possible)
