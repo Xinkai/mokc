@@ -1,5 +1,4 @@
 "use strict";
-"use strong";
 
 export function propStringForm(prop) {
     /* istanbul ignore else */
@@ -9,6 +8,15 @@ export function propStringForm(prop) {
         return prop.toString();
     } else {
         throw new TypeError(`${typeof prop} is not a valid key type`);
+    }
+}
+
+export function targetStringForm(target) {
+    // Edge 13.10586 does not have it natively
+    if (target[Symbol.toPrimitive]) {
+        return `${target[Symbol.toPrimitive]("string")}`;
+    } else {
+        return `${target}`;
     }
 }
 

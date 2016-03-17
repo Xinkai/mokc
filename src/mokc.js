@@ -1,5 +1,4 @@
 "use strict";
-// "use strong";
 
 import { monkeyPatch } from "./MonkeyPatch";
 monkeyPatch();

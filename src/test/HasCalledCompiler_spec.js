@@ -1,5 +1,4 @@
 "use strict";
-"use strong";
 
 import assert from "./assert";
 
