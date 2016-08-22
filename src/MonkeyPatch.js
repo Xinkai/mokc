@@ -16,7 +16,6 @@ export function monkeyPatch() {
     // For Edge 13
     if (!Array.prototype.includes) {
         Array.prototype.includes = function(searchElement /*, fromIndex*/ ) {
-            'use strict';
             const O = Object(this);
             const len = parseInt(O.length) || 0;
             if (len === 0) {

@@ -17,7 +17,7 @@ assert.isFunction = (object, msg = null) => {
 };
 
 assert.property = (object, prop, msg = null) => {
-    // chai.assert will accessing properties on the object
+    // chai.assert will unexpectedly create new sub-mock objects by accessing properties
     assert(prop in object, msg ? msg : `${targetStringForm(object)} does not have property ${propStringForm(prop)}`);
 };
 

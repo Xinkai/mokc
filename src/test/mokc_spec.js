@@ -87,48 +87,7 @@ describe('CreateMock', function() {
 });
 
 describe("Respect prototype", function() {
-    it("allows target to be passed in, unharmed", function() {
-        const target = {
-            key: "value",
-        };
-        const mock = makeMock({ target });
 
-        assert.strictEqual(mock.key, "value");
-    });
-
-    it("respects target's class inheritance", function() {
-        class Animal {
-            constructor() {
-                this.life = 1;
-            }
-            die() {
-                this.life--;
-                if (this.life === 0) {
-                    throw new Error("Died");
-                }
-            }
-        }
-
-        const animal = new Animal();
-        assert.throws(() => {
-            animal.die();
-        }, Error);
-
-        class Cat extends Animal {
-            constructor() {
-                super();
-                this.life = 9;
-            }
-        }
-
-        const cat = new Cat();
-        for (let i = 0; i < 8; i++) {
-            cat.die();
-        }
-        assert.throws(() => {
-            cat.die();
-        }, Error);
-    });
 });
 
 describe("Symbol as key on mock", function() {
@@ -155,23 +114,19 @@ describe("Has", function() {
         assert.notOwnProperty(mock, "value");
     });
 
-    context("Target being function", function() {
-        it("has arguments, but no name, length", function() {
-            const mock = makeMock();
+    it("getOwnPropertyNames", function() {
+        // mock and its target should expose identical own property names
+        const f = () => null;
+        const mock = makeMock(null, f);
 
-            // arguments is non-configurable
-            assert.ownProperty(mock, "arguments");
+        const fPNames = Object.getOwnPropertyNames(f);
+        const mockPNames = Object.getOwnPropertyNames(mock);
 
-            // name, length are configurable
-            assert.notOwnProperty(mock, "name");
-            assert.notOwnProperty(mock, "length");
-        });
+        assert.deepEqual(fPNames, mockPNames);
     });
 
     it("should behave as normal objects if the target was provided", function() {
-        const mock = makeMock({
-            target: Object.create(null),
-        });
+        const mock = makeMock(null, Object.create(null));
         mock.foo = "foo";
 
         assert.ownProperty(mock, "foo");
@@ -381,29 +336,27 @@ describe("Callable Generator", function() {
 
         assert.throws(() => {
             new gen();
-        }, TypeError, 'gen is not a constructor');
+        }, TypeError);
     });
 
     it("mock generator should not be constructable, even if the target was a function", function() {
-        const mock = makeMock();
+        const mock = makeMock(null, function() {});
         mock[Iterator] = [1, 2, 3, 4];
         const gen = mock();
 
         assert.throws(() => {
             new gen();
-        }, TypeError, 'gen is not a constructor');
+        }, TypeError);
     });
 
     it("mock generator should not be constructable, even if the target was a function*", function() {
-        const mock = makeMock({
-            target: function*() {},
-        });
+        const mock = makeMock(null, function*() {});
         mock[Iterator] = [1, 2, 3, 4];
         const gen = mock();
 
         assert.throws(() => {
             new gen();
-        }, TypeError, 'gen is not a constructor');
+        }, TypeError);
     });
     
     it("generator function should not be a mock", function() {
@@ -834,17 +787,25 @@ describe("Interoperability", function() {
     });
 
     describe("instanceof", function() {
-        context("By default, it is nothing", function() {
-            it("being not Proxy", function() {
+        context("default target", function() {
+            it("throws TypeError when doing instanceof Proxy", function() {
                 const mock = makeMock();
 
-                assert.isFalse(mock instanceof Proxy);
+                assert.throws(() => {
+                    mock instanceof Proxy
+                }, TypeError);
             });
 
-            it("being not Function", function() {
+            it("being Object", function() {
                 const mock = makeMock();
 
-                assert.isFalse(mock instanceof Function);
+                assert.isTrue(mock instanceof Object);
+            });
+
+            it("being Function", function() {
+                const mock = makeMock();
+
+                assert.isTrue(mock instanceof Function);
             });
 
             it("being not String", function() {
@@ -857,12 +818,6 @@ describe("Interoperability", function() {
                 const mock = makeMock();
 
                 assert.isFalse(mock instanceof Number);
-            });
-
-            it("being not Object", function() {
-                const mock = makeMock();
-
-                assert.isFalse(mock instanceof Object);
             });
 
             it("being not Date", function() {
@@ -883,6 +838,58 @@ describe("Interoperability", function() {
                 assert.isFalse(mock instanceof Boolean);
             });
         });
+
+        context("target is object", function() {
+            it("throws TypeError when doing instanceof Proxy", function() {
+                const mock = makeMock(null, Object.create(null));
+
+                assert.throws(() => {
+                    mock instanceof Proxy
+                }, TypeError);
+            });
+
+            it("being not Object", function() {
+                const mock = makeMock(null, Object.create(null));
+
+                assert.isFalse(mock instanceof Object);
+            });
+
+            it("being not Function", function() {
+                const mock = makeMock(null, Object.create(null));
+
+                assert.isFalse(mock instanceof Function);
+            });
+
+            it("being not String", function() {
+                const mock = makeMock(null, Object.create(null));
+
+                assert.isFalse(mock instanceof String);
+            });
+
+            it("being not Number", function() {
+                const mock = makeMock(null, Object.create(null));
+
+                assert.isFalse(mock instanceof Number);
+            });
+
+            it("being not Date", function() {
+                const mock = makeMock(null, Object.create(null));
+
+                assert.isFalse(mock instanceof Date);
+            });
+
+            it("being not Array", function() {
+                const mock = makeMock(null, Object.create(null));
+
+                assert.isFalse(mock instanceof Array);
+            });
+
+            it("being not Boolean", function() {
+                const mock = makeMock(null, Object.create(null));
+
+                assert.isFalse(mock instanceof Boolean);
+            });
+        });
     });
 
     describe("typeof", function() {
@@ -893,9 +900,7 @@ describe("Interoperability", function() {
         });
 
         it("being object", function() {
-            const mock = makeMock({
-                target: {},
-            });
+            const mock = makeMock(null, {});
 
             assert.isObject(mock);
         });
@@ -931,60 +936,62 @@ describe("Operators", function() {
     });
 });
 
-describe("HasCalled Compiler", function() {
-    it("access HasCalled assertion util", function() {
-        const mock = makeMock();
-        const result = mock();
-
-        assert.isDefined(result[has]);
-    });
-
-    describe("true/false question", function() {
-        it("anwsers called", function() {
+describe("Assertion", function() {
+    describe("HasCalled", function() {
+        it("access HasCalled assertion util", function() {
             const mock = makeMock();
             const result = mock();
 
-            assert.isTrue(mock[has].called());
-            assert.isFalse(result[has].called());
+            assert.isDefined(result[has]);
         });
 
-        it("anwsers called with()", function() {
-            const mock = makeMock();
-            mock();
+        describe("true/false question", function() {
+            it("anwsers called", function() {
+                const mock = makeMock();
+                const result = mock();
 
-            assert.isTrue(mock[has].called.with()());
-            assert.isFalse(mock[has].called.with(1)());
-        });
+                assert.isTrue(mock[has].called());
+                assert.isFalse(result[has].called());
+            });
 
-        it("anwsers called count()", function() {
-            const mock = makeMock();
-            mock();
+            it("anwsers called with()", function() {
+                const mock = makeMock();
+                mock();
 
-            assert.isTrue(mock[has].called.count(1)());
+                assert.isTrue(mock[has].called.with()());
+                assert.isFalse(mock[has].called.with(1)());
+            });
 
-            for (const count of [-1, 5.5, true]) {
-                assert.throws(() => {
-                    mock[has].called.count(count)();
-                }, TypeError);
-            }
-        });
+            it("anwsers called count()", function() {
+                const mock = makeMock();
+                mock();
 
-        it("anwsers called on()", function() {
-            const mock = makeMock();
-            mock();
+                assert.isTrue(mock[has].called.count(1)());
 
-            assert.isTrue(mock[has].called.on(undefined)());
-            assert.isFalse(mock[has].called.on({})());
-        });
+                for (const count of [-1, 5.5, true]) {
+                    assert.throws(() => {
+                        mock[has].called.count(count)();
+                    }, TypeError);
+                }
+            });
 
-        it("anwsers called after()", function() {
-            const mock = makeMock();
-            const time1 = performance.now();
-            mock();
-            const time2 = performance.now();
+            it("anwsers called on()", function() {
+                const mock = makeMock();
+                mock();
 
-            assert.isTrue(mock[has].called.after(time1)());
-            assert.isFalse(mock[has].called.after(time2)());
+                assert.isTrue(mock[has].called.on(undefined)());
+                assert.isFalse(mock[has].called.on({})());
+            });
+
+            it("anwsers called after()", function() {
+                const mock = makeMock();
+                const time1 = performance.now();
+                mock();
+                const time2 = performance.now();
+
+                assert.isTrue(mock[has].called.after(time1)());
+                assert.isFalse(mock[has].called.after(time2)());
+            });
         });
     });
 });

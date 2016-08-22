@@ -57,7 +57,6 @@ export const has = Symbol("Assert");
 const DefaultOptions = {
     [AccessPath]: ["mock"],
     debug: false,
-    target: undefined,
 };
 
 function getHighResTime() {
@@ -68,44 +67,41 @@ class MockDefaultTarget extends Function {
 
 }
 
-export function makeMock(optionsIn = null) {
+export function makeMock(optionsIn = null, target = null) {
     const options = Object.assign(Object.create(null), DefaultOptions);
 
     if (optionsIn) {
         Object.assign(options, optionsIn);
     }
 
+    let name;
     let iteratorSet = false;
     let returnSet = false;
-    let assertionInterface = null;
-
-    const targetNotSpecified = options.target === undefined;
-    const target = targetNotSpecified ? new MockDefaultTarget() : options.target;
+    let assertionCompiler = false;
+    const targetNotSpecified = target === null;
+    if (targetNotSpecified) {
+        target = new MockDefaultTarget();
+    }
     const mockId = mockCount++;
     const accessPath = options[AccessPath].slice(0);
     const callHistory = [];
 
-    if (!target[Symbol.toPrimitive]) { // This cannot be under handler's get()
-        target[Symbol.toPrimitive] = (hint) => {
-            switch (hint) {
-                case "string": {
-                    const parts = ["mokc"];
-                    if (!targetNotSpecified) {
-                        parts.push("targeted");
-                    }
-                    parts.push(`id=${mockId}`);
-                    parts.push(`name='${accessPath.join(".")}'`);
-                    return `[${parts.join(" ")}]`;
-                }
-                case "default": {
-                    throw new TypeError("Cannot toPrimitive<default>");
-                }
-                default: {
-                    throw new TypeError(`Unhandled hint ${hint}`);
-                }
+    target[Symbol.toPrimitive] = (hint) => {
+        switch (hint) {
+            case "string": {
+                const parts = ["mokc"];
+                parts.push(`id=${mockId}`);
+                parts.push(`name='${formatAccessPath(accessPath, name).join(".")}'`);
+                return `[${parts.join(" ")}]`;
             }
-        };
-    }
+            case "default": {
+                throw new TypeError("Cannot convert to primitive");
+            }
+            default: {
+                throw new TypeError(`Unhandled hint ${hint}`);
+            }
+        }
+    };
 
     const handler = {
         set(obj, prop, value, receiver) {
@@ -127,36 +123,35 @@ export function makeMock(optionsIn = null) {
         get(obj, prop, receiver) {
             switch (typeof prop) {
                 case "string": {
-                    options.debug && console.log(`[Handler::get] ${obj}->${prop} ${receiver}`);
+                    options.debug && console.debug(`[Handler::get] ${obj}->${prop} ${receiver}`);
                     switch (prop) {
-                        // special treatment for special keys
-                        case "__proto__":
-                        case "prototype": { // These two cannot be mocks, otherwise leads to infinite recursion problem
-                            return obj[prop];
+                        case "__proto__": {
+                            return obj.__proto__;
+                        }
+                        case "prototype": {
+                            return obj.prototype;
                         }
                         case "toJSON": {
-                            if (Object.getOwnPropertyNames(obj).indexOf(prop) === -1) {
+                            if (typeof obj[prop] === "undefined") {
                                 return () => {
                                     throw new Error(`You must do more before stringify`); // TODO: make this more clear
                                 };
                             }
                             break;
                         }
-                        default: {
-                            if (Object.getOwnPropertyNames(obj).indexOf(prop) === -1) {
-                                obj[prop] = makeMock({
-                                    [AccessPath]: formatAccessPath(accessPath, prop),
-                                });
-                            }
-                        }
+                        default: {}
                     }
-
+                    if (Object.getOwnPropertyNames(obj).indexOf(prop) === -1) {
+                        name = prop;
+                        obj[prop] = makeMock({
+                            [AccessPath]: formatAccessPath(accessPath, name),
+                        });
+                    }
                     break;
                 }
                 case "symbol": {
-                    options.debug && console.log(`[Handler::get] ${obj}->${prop.toString()}`);
+                    options.debug && console.debug(`[Handler::get] ${obj}->${prop.toString()}`);
                     switch (prop) {
-                        // mokc symbols
                         case Handler: {
                             return handler;
                         }
@@ -172,24 +167,7 @@ export function makeMock(optionsIn = null) {
                             }
                             break;
                         }
-                        case has: {
-                            if (!assertionInterface) {
-                                assertionInterface = {
-                                    called: new HasCalledCompiler(callHistory),
-                                };
-                            }
-                            return assertionInterface;
-                        }
-                        case MockId: {
-                            return mockId;
-                        }
-
-                        // generic symbols
                         case Symbol.iterator: {
-                            if (Object.getOwnPropertySymbols(obj).indexOf(prop) !== -1) {
-                                break;
-                            }
-                            // TODO: implement: record iterator's consumer next() values for assertion
                             if (iteratorSet) {
                                 return function*() {
                                     yield* obj[Iterator];
@@ -197,14 +175,20 @@ export function makeMock(optionsIn = null) {
                             }
                             break;
                         }
+                        case has: {
+                            if (!assertionCompiler) {
+                                assertionCompiler = {
+                                    called: new HasCalledCompiler(callHistory),
+                                };
+                            }
+                            return assertionCompiler;
+                        }
+                        case MockId: {
+                            return mockId;
+                        }
                         case Symbol.toStringTag: {
                             // Object.prototype.toString.call(mock)
-                            if (targetNotSpecified) {
-                                return `mokc id=${mockId} name='${accessPath.join(".")}'`;
-                            } else {
-                                return `mokc targeted id=${mockId} name='${accessPath.join(".")}'`;
-                            }
-
+                            return `mokc id=${mockId} name='${formatAccessPath(accessPath, name).join(".")}'`;
                         }
                         case Symbol.isConcatSpreadable: {
                             // [].concat(mock)
@@ -216,11 +200,9 @@ export function makeMock(optionsIn = null) {
                         case Symbol.hasInstance: {
                             throw new TypeError("mokc does not implement Symbol.hasInstance");
                         }
+                        // List of known symbols, do not info it
+                        case Iterator:
                         case Symbol.toPrimitive: {
-                            return (hint) => `Proxy(${obj[prop](hint)})`;
-                        }
-                        // List of known symbols, do not console.info it
-                        case Iterator: {
                             break;
                         }
                         default: {
@@ -236,7 +218,7 @@ export function makeMock(optionsIn = null) {
         apply(obj, that, args) {
             const callTrace = accessPath.slice(0);
             callTrace[callTrace.length - 1] += "()";
-            options.debug && console.log(`[Handler::apply] ${callTrace.join(".")} with [${args.join(", ")}]`);
+            options.debug && console.debug(`[Handler::apply] ${callTrace.join(".")} with [${args.join(", ")}]`);
 
             if (iteratorSet) {
                 if (Object.getOwnPropertySymbols(obj).includes(Iterator)) {
@@ -264,7 +246,7 @@ export function makeMock(optionsIn = null) {
             }
 
             const result = makeMock({
-                [AccessPath]: callTrace,
+                [AccessPath]: formatAccessPath(callTrace, name),
             });
             callHistory.push(
                 [ args, that, result, getHighResTime() ]
@@ -272,7 +254,10 @@ export function makeMock(optionsIn = null) {
             return result;
         },
         construct(obj, args) {
-            return makeMock({ args });
+            if (iteratorSet) {
+                throw new TypeError(`${name} is not a constructor`);
+            }
+            return makeMock();
         },
         deleteProperty(obj, prop) {
             return Reflect.deleteProperty(obj, prop);
@@ -281,14 +266,14 @@ export function makeMock(optionsIn = null) {
             return Reflect.defineProperty(obj, prop, descriptor);
         },
         has(obj, prop) {
-            options.debug && console.log(`[Handler::has] ${obj} ${propStringForm(prop)}`);
+            options.debug && console.debug(`[Handler::has] ${obj} ${propStringForm(prop)}`);
             return Reflect.has(obj, prop);
         },
         setPrototypeOf(obj, proto) {
             return Reflect.setPrototypeOf(target, proto);
         },
         getPrototypeOf(obj) {
-            return null;
+            return Reflect.getPrototypeOf(obj);
         },
         isExtensible(obj) {
             return Reflect.isExtensible(obj);
@@ -300,8 +285,7 @@ export function makeMock(optionsIn = null) {
             return Reflect.getOwnPropertyDescriptor(obj, prop);
         },
         ownKeys(obj) {
-            // TODO: do not blindly filter out name, and length
-            return Reflect.ownKeys(obj).filter(one => one != "name" && one != "length");
+            return Reflect.ownKeys(obj);
         },
     };
 

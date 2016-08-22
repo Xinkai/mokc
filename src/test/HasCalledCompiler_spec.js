@@ -149,6 +149,10 @@ describe("HasCalledCompiler", function() {
 
             const answer = hc.count(What)();
             assert.strictEqual(answer, 3);
+        });
+
+        it("is a TypeError when pass Whats to count()", function() {
+            const hc = new HasCalledCompiler(fixture);
 
             assert.throws(() => {
                 hc.count(Whats)();
